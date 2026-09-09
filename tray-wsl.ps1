@@ -26,6 +26,8 @@
 #>
 param(
     [switch]$SelfCheck,
+    [switch]$Configure,
+    [switch]$Stop,
     [switch]$Install,
     [switch]$Uninstall
 )
@@ -157,6 +159,15 @@ $sid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
 $instance = New-Object Threading.Mutex($false, "Local\tray-wsl-$sid")
 $ownsInstance = $false
 try {
+    if ($Stop) {
+        try { $stopRequest = [Threading.EventWaitHandle]::OpenExisting("Local\tray-wsl-stop-$sid") }
+        catch [Threading.WaitHandleCannotBeOpenedException] { return }
+        [void]$stopRequest.Set()
+        try { $ownsInstance = $instance.WaitOne(30000) }
+        catch [Threading.AbandonedMutexException] { $ownsInstance = $true }
+        if (-not $ownsInstance) { throw 'The tray did not exit. Choose Exit from its menu and retry.' }
+        return
+    }
     try { $ownsInstance = $instance.WaitOne(0) }
     catch [Threading.AbandonedMutexException] { $ownsInstance = $true }
     if (-not $ownsInstance) { return }
@@ -200,6 +211,7 @@ function Resolve-Distro {
     Save-Config
 }
 Resolve-Distro
+if ($Configure) { return }
 
 # ---------------------------------------------------------------- WSL actions
 function Stop-Wsl  { Invoke-Wsl @('--shutdown') | Out-Null; Log 'wsl --shutdown' }
@@ -328,9 +340,11 @@ $miExit.add_Click({ [System.Windows.Forms.Application]::Exit() })
 $script:Desired = if (Test-WslUp) { 'on' } else { 'off' }
 Refresh-Ui
 Enforce-Desired -Immediate
+$stopRequest = New-Object Threading.EventWaitHandle($false, [Threading.EventResetMode]::ManualReset, "Local\tray-wsl-stop-$sid")
 $tick = New-Object System.Windows.Forms.Timer
 $tick.Interval = 5000
 $tick.add_Tick({
+    if ($stopRequest.WaitOne(0)) { [System.Windows.Forms.Application]::Exit(); return }
     try { Enforce-Desired; Refresh-Ui }
     catch { Log "tick error: $($_.Exception.Message)"; $ni.Text = 'WSL: status/action failed - see tray-wsl.log' }
 })
@@ -346,6 +360,7 @@ $tick.Start()
     if ($menu) { $menu.Dispose() }
     if ($script:IconAwake) { $script:IconAwake.Dispose() }
     if ($script:IconSleep) { $script:IconSleep.Dispose() }
+    if ($stopRequest) { $stopRequest.Dispose() }
     if ($ownsInstance) { $instance.ReleaseMutex() }
     $instance.Dispose()
 }

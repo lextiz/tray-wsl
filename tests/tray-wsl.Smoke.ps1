@@ -19,6 +19,7 @@ foreach ($function in $ast.FindAll({ param($n) $n -is [Management.Automation.Lan
 }
 # Give the smoke test its own mutex so it never interacts with an installed tray.
 $source = $source.Replace('Local\tray-wsl-$sid', 'Local\tray-wsl-smoke-$sid-$PID')
+$source = $source.Replace('Local\tray-wsl-stop-$sid', 'Local\tray-wsl-smoke-stop-$sid-$PID')
 $source = $source.Replace('[System.Windows.Forms.Application]::Run()', @'
 if (-not $ni.Visible -or $null -eq $ni.Icon) { throw 'Tray failed to initialize' }
 $miSwitch.PerformClick()
