@@ -1,0 +1,4 @@
+tray-wsl.config.json
+tray-wsl.log
+*.log
+TestResults.xml
