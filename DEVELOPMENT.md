@@ -19,6 +19,7 @@ removes the task and files.
 Push a `v*` tag to run the Windows GitHub Actions job, test, and publish
 `install.ps1`, `tray-wsl.zip`, and `SHA256SUMS`. Pull requests test and package
 without publishing. Runtime config, logs, test output, and `dist/` stay out of Git.
+An existing tag can also be released manually through **Actions > Test and release > Run workflow**.
 
 `bootstrap.ps1` is published as the release's `install.ps1`. It downloads and
 verifies the latest release, then runs the installer inside `tray-wsl.zip`.
